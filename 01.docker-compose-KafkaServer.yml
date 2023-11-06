@@ -1,0 +1,27 @@
+# Create a Kafka Broker for testing
+# Kafka Host: localhost
+# Kafka Port: 9092
+
+version: '3.1'
+services:
+  fast-dev-kafka:
+    image: lensesio/fast-data-dev:2.6.2
+    ports:
+      - "9092:9092"
+      - "8081:8081"
+      - "8082:8082"
+      - "8083:8083"
+      - "2181:2181"
+      - "3030:3030"
+    environment:
+      ADV_HOST: "127.0.0.1"
+      RUNNING_SAMPLEDATA: 1
+      RUNTESTS: 1
+      DEBUG: 1
+
+    networks:
+      - common-network
+
+networks:
+  common-network:
+    external: true
