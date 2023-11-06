@@ -16,6 +16,9 @@ public class ConsumerService {
 	
 	private final Log log = LogFactory.getLog(getClass());
 
+	@Value("${server.port}")
+	String serverPort;
+
 	@Value(value = "${kafka.topic}")
 	private String topicName;
 
@@ -24,7 +27,7 @@ public class ConsumerService {
 			@Payload String message,
 			@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
 			@Header(KafkaHeaders.RECORD_METADATA) ConsumerRecord record) {
-		log.info(System.currentTimeMillis() +
+		log.info("ServerPort: [" + serverPort + "]" +
 				" -- Received Message: " + message + ", topic: " + topicName
 						+ ", partition: " + record.partition() + ", offset: " + record.offset()
 						+ ", time: " + new Date());

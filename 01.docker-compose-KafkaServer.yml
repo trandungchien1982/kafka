@@ -15,9 +15,9 @@ services:
       - "3030:3030"
     environment:
       ADV_HOST: "127.0.0.1"
-      RUNNING_SAMPLEDATA: 1
-      RUNTESTS: 1
-      DEBUG: 1
+      # RUNNING_SAMPLEDATA: 1
+      # RUNTESTS: 1
+      # DEBUG: 1
 
     networks:
       - common-network

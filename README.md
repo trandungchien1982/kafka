@@ -26,18 +26,23 @@ Mỗi nhánh trong Repo sẽ là 1 ví dụ/ giải pháp/ project mẫu liên q
 D:\Projects\kafka
 ```
 ==============================================================
-# Ví dụ [01.HelloWorld]
+# Ví dụ [02.UseConsumerGroup]
 ==============================================================
 
 **Tham khảo**
-- https://www.baeldung.com/spring-kafka
+- https://viblo.asia/p/tim-hieu-ve-consumer-va-consumer-group-trong-kafka-Qbq5Q77XZD8
+- https://vsudo.net/blog/kafka-consumer.html
+- https://aithietke.com/tim-hieu-ve-consumer-va-consumer-group-trong-kafka/
+- https://hackmd.io/@datbv/r1ub5ZpkF
 
 **Yêu cầu**
 - Dựng môi trường Kafka dùng Docker
 - Tạo 1 App Spring Boot đóng vai trò Producer (`spring-kafka-producer`)
 - Tạo 1 App Spring Boot đóng vai trò Consumer (`spring-kafka-consumer`)
-- Theo dõi các messages được Producer sinh ra và đẩy vào Kafka Partitions
-- Theo dõi các messages đã được Consume
+  - Mở Port ngẫu nhiên từ 9121 đến 9130
+  - Mỗi lần chạy instance của consumer thì nó đã thuộc chung Consumer Group `consumerGroupII` của topic: `main-consumer-topic`
+- Theo dõi các messages được Producer sinh ra và đẩy vào Kafka Partitions từ Kafka Server UI
+- Theo dõi các messages đã được Consume dựa vào Console Log
 
 **Kiểm tra kết quả**
 - Dùng Docker Compose dựng môi trường Kafka Dev, Kafka Broker giao tiếp ở port 9092
@@ -296,190 +301,176 @@ fast-dev-kafka_1  | 2023-11-06 04:18:37,414 INFO success: zookeeper entered RUNN
 
 ```
 
-- Produce nhiều messages vào topic `hello-world-topic` thông qua endpoint lặp lại nhiều lần :) : <br />
-(Từ count_10 đến count_30)
-```shell
-http://localhost:9117/send
 
+- Kiểm tra việc consume các messages trong topic `main-consumer-topic`: <br />
+(Xem trong Console Log của Consumer) <br/>
+  - Khi chạy instance `spring-kafka-consumer` thứ nhất (lúc này Consumer Group có 1 Consumer)
+```shell
+./gradlew bootRun
+--------------------------------------------------
+[Kafka-Consumer] INFO  - Tomcat started on port(s): 9128 (http) with context path ''
+[Kafka-Consumer] INFO  - Started KafkaConsumerApp in 1.519 seconds (JVM running for 1.83)
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Cluster ID: zd5a3zr8Q56Ochg0wmt_KQ
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Discovered group coordinator 127.0.0.1:9092 (id: 2147483647 rack: null)
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Request joining group due to: need to re-join with the given member-id
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully joined group with generation Generation{generationId=1, memberId='consumer-consumerGroupII-1-5b0e5da3-3c42-45ca-9f87-b0a3cda23b27', protocol='range'}
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-0, main-consumer-topic-1, main-consumer-topic-2
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Found no committed offset for partition main-consumer-topic-0
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Found no committed offset for partition main-consumer-topic-1
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Found no committed offset for partition main-consumer-topic-2
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Found no committed offset for partition main-consumer-topic-0
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Found no committed offset for partition main-consumer-topic-1
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Found no committed offset for partition main-consumer-topic-2
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Resetting offset for partition main-consumer-topic-0 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}.
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Resetting offset for partition main-consumer-topic-1 to position FetchPosition{offset=1, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}.
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Resetting offset for partition main-consumer-topic-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}.
+[Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-0, main-consumer-topic-1, main-consumer-topic-2]
 ```
 
-- Kiểm tra việc consume các messages trong topic `hello-world-topic`: <br />
-  - (Xem trong Console Log của Consumer) <br/>
-  - Có vẻ như offset của các partition được assign vào topic đã được gán về cuối cùng nên Consumer không thấy record nào mới cả ...
-
+  - Khi chạy instance `spring-kafka-consumer` thứ hai (lúc này Consumer Group có 2 Consumer) <br />
+  2 Consumers trong Consumer Group sẽ được này xử lý Rebalance Partition:
+    - Consumer 1: [main-consumer-topic-2]
+    - Consumer 2: [main-consumer-topic-0, main-consumer-topic-1]
 ```shell
-15:30:11: Executing ':KafkaConsumerApp.main()'...
-
-> Task :compileJava
-> Task :processResources UP-TO-DATE
-> Task :classes
-
-> Task :KafkaConsumerApp.main()
-
-  .   ____          _            __ _ _
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-  '  |____| .__|_| |_|_| |_\__, | / / / /
- =========|_|==============|___/=/_/_/_/
- :: Spring Boot ::               (v2.7.16)
-
-[Kafka-Consumer] INFO  - Starting KafkaConsumerApp using Java 1.8.0_333 on tdc with PID 211985 (/home/tdc/kafka/spring-kafka-consumer/build/classes/java/main started by tdc in /home/tdc/kafka/spring-kafka-consumer)
-[Kafka-Consumer] INFO  - No active profile set, falling back to 1 default profile: "default"
-[Kafka-Consumer] INFO  - Tomcat initialized with port(s): 9118 (http)
-[Kafka-Consumer] INFO  - Initializing ProtocolHandler ["http-nio-9118"]
-[Kafka-Consumer] INFO  - Starting service [Tomcat]
-[Kafka-Consumer] INFO  - Starting Servlet engine: [Apache Tomcat/9.0.80]
-[Kafka-Consumer] INFO  - Initializing Spring embedded WebApplicationContext
-[Kafka-Consumer] INFO  - Root WebApplicationContext: initialization completed in 1003 ms
-[Kafka-Consumer] INFO  - ConsumerConfig values: 
-  allow.auto.create.topics = true
-  auto.commit.interval.ms = 5000
-  auto.offset.reset = latest
-  bootstrap.servers = [http://localhost:9092]
-  check.crcs = true
-  client.dns.lookup = use_all_dns_ips
-  client.id = consumer-consumerGroup1s-1
-  client.rack = 
-  connections.max.idle.ms = 540000
-  default.api.timeout.ms = 60000
-  enable.auto.commit = false
-  exclude.internal.topics = true
-  fetch.max.bytes = 52428800
-  fetch.max.wait.ms = 500
-  fetch.min.bytes = 1
-  group.id = consumerGroup1s
-  group.instance.id = null
-  heartbeat.interval.ms = 3000
-  interceptor.classes = []
-  internal.leave.group.on.close = true
-  internal.throw.on.fetch.stable.offset.unsupported = false
-  isolation.level = read_uncommitted
-  key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
-  max.partition.fetch.bytes = 1048576
-  max.poll.interval.ms = 300000
-  max.poll.records = 500
-  metadata.max.age.ms = 300000
-  metric.reporters = []
-  metrics.num.samples = 2
-  metrics.recording.level = INFO
-  metrics.sample.window.ms = 30000
-  partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
-  receive.buffer.bytes = 65536
-  reconnect.backoff.max.ms = 1000
-  reconnect.backoff.ms = 50
-  request.timeout.ms = 30000
-  retry.backoff.ms = 100
-  sasl.client.callback.handler.class = null
-  sasl.jaas.config = null
-  sasl.kerberos.kinit.cmd = /usr/bin/kinit
-  sasl.kerberos.min.time.before.relogin = 60000
-  sasl.kerberos.service.name = null
-  sasl.kerberos.ticket.renew.jitter = 0.05
-  sasl.kerberos.ticket.renew.window.factor = 0.8
-  sasl.login.callback.handler.class = null
-  sasl.login.class = null
-  sasl.login.connect.timeout.ms = null
-  sasl.login.read.timeout.ms = null
-  sasl.login.refresh.buffer.seconds = 300
-  sasl.login.refresh.min.period.seconds = 60
-  sasl.login.refresh.window.factor = 0.8
-  sasl.login.refresh.window.jitter = 0.05
-  sasl.login.retry.backoff.max.ms = 10000
-  sasl.login.retry.backoff.ms = 100
-  sasl.mechanism = GSSAPI
-  sasl.oauthbearer.clock.skew.seconds = 30
-  sasl.oauthbearer.expected.audience = null
-  sasl.oauthbearer.expected.issuer = null
-  sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
-  sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
-  sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
-  sasl.oauthbearer.jwks.endpoint.url = null
-  sasl.oauthbearer.scope.claim.name = scope
-  sasl.oauthbearer.sub.claim.name = sub
-  sasl.oauthbearer.token.endpoint.url = null
-  security.protocol = PLAINTEXT
-  security.providers = null
-  send.buffer.bytes = 131072
-  session.timeout.ms = 45000
-  socket.connection.setup.timeout.max.ms = 30000
-  socket.connection.setup.timeout.ms = 10000
-  ssl.cipher.suites = null
-  ssl.enabled.protocols = [TLSv1.2]
-  ssl.endpoint.identification.algorithm = https
-  ssl.engine.factory.class = null
-  ssl.key.password = null
-  ssl.keymanager.algorithm = SunX509
-  ssl.keystore.certificate.chain = null
-  ssl.keystore.key = null
-  ssl.keystore.location = null
-  ssl.keystore.password = null
-  ssl.keystore.type = JKS
-  ssl.protocol = TLSv1.2
-  ssl.provider = null
-  ssl.secure.random.implementation = null
-  ssl.trustmanager.algorithm = PKIX
-  ssl.truststore.certificates = null
-  ssl.truststore.location = null
-  ssl.truststore.password = null
-  ssl.truststore.type = JKS
-  value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
-
-[Kafka-Consumer] INFO  - Kafka version: 3.1.2
-[Kafka-Consumer] INFO  - Kafka commitId: f8c67dc3ae0a3265
-[Kafka-Consumer] INFO  - Kafka startTimeMs: 1699259418234
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Subscribed to topic(s): hello-world-topic
-[Kafka-Consumer] INFO  - Starting ProtocolHandler ["http-nio-9118"]
-[Kafka-Consumer] INFO  - Tomcat started on port(s): 9118 (http) with context path ''
-[Kafka-Consumer] INFO  - Started KafkaConsumerApp in 2.3 seconds (JVM running for 2.769)
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Cluster ID: 0Ra5Z1t0S3CQ_tq0fznaIg
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Discovered group coordinator 127.0.0.1:9092 (id: 2147483647 rack: null)
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] (Re-)joining group
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Request joining group due to: need to re-join with the given member-id
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] (Re-)joining group
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Successfully joined group with generation Generation{generationId=1, memberId='consumer-consumerGroup1s-1-b08ce700-0613-4ab0-be40-71af4063c124', protocol='range'}
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Finished assignment for group at generation 1: {consumer-consumerGroup1s-1-b08ce700-0613-4ab0-be40-71af4063c124=Assignment(partitions=[hello-world-topic-0, hello-world-topic-1, hello-world-topic-2])}
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Successfully synced group in generation Generation{generationId=1, memberId='consumer-consumerGroup1s-1-b08ce700-0613-4ab0-be40-71af4063c124', protocol='range'}
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Notifying assignor about the new Assignment(partitions=[hello-world-topic-0, hello-world-topic-1, hello-world-topic-2])
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Adding newly assigned partitions: hello-world-topic-0, hello-world-topic-2, hello-world-topic-1
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Found no committed offset for partition hello-world-topic-0
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Found no committed offset for partition hello-world-topic-2
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Found no committed offset for partition hello-world-topic-1
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Found no committed offset for partition hello-world-topic-0
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Found no committed offset for partition hello-world-topic-2
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Found no committed offset for partition hello-world-topic-1
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Resetting offset for partition hello-world-topic-0 to position FetchPosition{offset=7, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}.
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Resetting offset for partition hello-world-topic-2 to position FetchPosition{offset=8, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}.
-[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroup1s-1, groupId=consumerGroup1s] Resetting offset for partition hello-world-topic-1 to position FetchPosition{offset=6, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}.
-[Kafka-Consumer] INFO  - consumerGroup1s: partitions assigned: [hello-world-topic-0, hello-world-topic-2, hello-world-topic-1]
-
+./gradlew bootRun
+--------------------------------------------------
+[Kafka-Consumer] INFO  - Starting ProtocolHandler ["http-nio-9127"]
+[Kafka-Consumer] INFO  - Tomcat started on port(s): 9127 (http) with context path ''
+[Kafka-Consumer] INFO  - Started KafkaConsumerApp in 1.583 seconds (JVM running for 1.907)
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Cluster ID: zd5a3zr8Q56Ochg0wmt_KQ
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Discovered group coordinator 127.0.0.1:9092 (id: 2147483647 rack: null)
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Request joining group due to: need to re-join with the given member-id
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully joined group with generation Generation{generationId=2, memberId='consumer-consumerGroupII-1-47eabe0a-dcb1-4f70-aa53-ec7136343d97', protocol='range'}
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully synced group in generation Generation{generationId=2, memberId='consumer-consumerGroupII-1-47eabe0a-dcb1-4f70-aa53-ec7136343d97', protocol='range'}
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[main-consumer-topic-0, main-consumer-topic-1])
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-0, main-consumer-topic-1
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-0 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-1 to the committed offset FetchPosition{offset=1, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+[Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-0, main-consumer-topic-1]
+```
+  
+  - Khi chạy instance `spring-kafka-consumer` thứ ba (lúc này Consumer Group có 3 Consumer) <br />
+  3 Consumers trong Consumer Group sẽ được này xử lý Rebalance Partition:
+    - Consumer 1: [main-consumer-topic-1]
+    - Consumer 2: [main-consumer-topic-0]
+    - Consumer 3: [main-consumer-topic-2]
+```shell
+./gradlew bootRun
+--------------------------------------------------
+[Kafka-Consumer] INFO  - Tomcat started on port(s): 9129 (http) with context path ''
+[Kafka-Consumer] INFO  - Started KafkaConsumerApp in 1.623 seconds (JVM running for 1.968)
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Cluster ID: zd5a3zr8Q56Ochg0wmt_KQ
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Discovered group coordinator 127.0.0.1:9092 (id: 2147483647 rack: null)
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Request joining group due to: need to re-join with the given member-id
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully joined group with generation Generation{generationId=3, memberId='consumer-consumerGroupII-1-e7cd8437-0208-404a-bc10-7e84b0d3137c', protocol='range'}
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully synced group in generation Generation{generationId=3, memberId='consumer-consumerGroupII-1-e7cd8437-0208-404a-bc10-7e84b0d3137c', protocol='range'}
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[main-consumer-topic-2])
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-2
+[Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-2 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+[Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-2]
 ```
 
+  - Tiến hành xóa đi 1 instance `spring-kafka-consumer` (lúc này Consumer Group có 2 Consumer) <br />
+    2 Consumers trong Consumer Group sẽ được xử lý Rebalance Partition:
+    - Consumer 1: [main-consumer-topic-2]
+    - Consumer 2: [main-consumer-topic-0, main-consumer-topic-1]
 
-- Tiến hành produce thêm 10 messages nữa, bắt đầu từ index 100
+
+- Tiến hành produce 10 messages, bắt đầu từ index 100
   - Xem kết quả bên Producer :
-```shell
-[Kafka-Producer] INFO  - [Producer clientId=producer-1] Instantiated an idempotent producer.
-[Kafka-Producer] INFO  - Kafka version: 3.1.2
-[Kafka-Producer] INFO  - Kafka commitId: f8c67dc3ae0a3265
-[Kafka-Producer] INFO  - Kafka startTimeMs: 1699259801128
-[Kafka-Producer] INFO  - [Producer clientId=producer-1] Cluster ID: 0Ra5Z1t0S3CQ_tq0fznaIg
-[Kafka-Producer] INFO  - [Producer clientId=producer-1] ProducerId set to 1 with epoch 0
-```
+    ```shell
+    [Kafka-Producer] INFO  - [Producer clientId=producer-1] Instantiated an idempotent producer.
+    [Kafka-Producer] INFO  - Kafka version: 3.1.2
+    [Kafka-Producer] INFO  - Kafka commitId: f8c67dc3ae0a3265
+    [Kafka-Producer] INFO  - Kafka startTimeMs: 1699259801128
+    [Kafka-Producer] INFO  - [Producer clientId=producer-1] Cluster ID: 0Ra5Z1t0S3CQ_tq0fznaIg
+    [Kafka-Producer] INFO  - [Producer clientId=producer-1] ProducerId set to 1 with epoch 0
+    ```
+    
+  - Xem kết quả bên Consumer 1: <br />
+    (Consumer 1 đang được assign cho partition 2: [main-consumer-topic-2])
+    ```shell
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[main-consumer-topic-2])
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-2
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-2 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-2]
+    [Kafka-Consumer] INFO  - ServerPort: [9128] -- Received Message: Message-Type1 : count_106 , topic: main-consumer-topic, partition: 2, offset: 0, time: Mon Nov 06 23:53:07 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9128] -- Received Message: Message-Type1 : count_109 , topic: main-consumer-topic, partition: 2, offset: 1, time: Mon Nov 06 23:53:09 ICT 2023
+    ```
 
-  - Xem kết quả bên Consumer : 
-```shell
-[Kafka-Consumer] INFO  - consumerGroup1s: partitions assigned: [hello-world-topic-0, hello-world-topic-2, hello-world-topic-1]
-[Kafka-Consumer] INFO  - 1699260010665 -- Received Message: Message-Type1 : count_103 , topic: hello-world-topic, partition: 0, offset: 7, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_105 , topic: hello-world-topic, partition: 0, offset: 8, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_109 , topic: hello-world-topic, partition: 0, offset: 9, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_101 , topic: hello-world-topic, partition: 2, offset: 8, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_104 , topic: hello-world-topic, partition: 2, offset: 9, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_106 , topic: hello-world-topic, partition: 2, offset: 10, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_108 , topic: hello-world-topic, partition: 2, offset: 11, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_110 , topic: hello-world-topic, partition: 2, offset: 12, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_100 , topic: hello-world-topic, partition: 1, offset: 6, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_102 , topic: hello-world-topic, partition: 1, offset: 7, time: Mon Nov 06 15:40:10 ICT 2023
-[Kafka-Consumer] INFO  - 1699260010666 -- Received Message: Message-Type1 : count_107 , topic: hello-world-topic, partition: 1, offset: 8, time: Mon Nov 06 15:40:10 ICT 2023
+  - Xem kết quả bên Consumer 2: <br />
+    (Consumer 2 đang được assign cho partition 0, partition 1: [main-consumer-topic-0, main-consumer-topic-1])
+    ```shell
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[main-consumer-topic-0, main-consumer-topic-1])
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-0, main-consumer-topic-1
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-0 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-1 to the committed offset FetchPosition{offset=1, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-0, main-consumer-topic-1]
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_100 , topic: main-consumer-topic, partition: 0, offset: 0, time: Mon Nov 06 23:53:03 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_101 , topic: main-consumer-topic, partition: 1, offset: 1, time: Mon Nov 06 23:53:05 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_102 , topic: main-consumer-topic, partition: 0, offset: 1, time: Mon Nov 06 23:53:05 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_103 , topic: main-consumer-topic, partition: 1, offset: 2, time: Mon Nov 06 23:53:06 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_104 , topic: main-consumer-topic, partition: 0, offset: 2, time: Mon Nov 06 23:53:06 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_105 , topic: main-consumer-topic, partition: 1, offset: 3, time: Mon Nov 06 23:53:07 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_107 , topic: main-consumer-topic, partition: 1, offset: 4, time: Mon Nov 06 23:53:08 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_108 , topic: main-consumer-topic, partition: 0, offset: 3, time: Mon Nov 06 23:53:08 ICT 2023
+    [Kafka-Consumer] INFO  - ServerPort: [9124] -- Received Message: Message-Type1 : count_110 , topic: main-consumer-topic, partition: 1, offset: 5, time: Mon Nov 06 23:53:09 ICT 2023
+    ```
 
-```
+- Ta sẽ tạo thêm vài Consumer mới để (5 consumers > 3 partitions) <br />
+=> Sẽ có 2 Consumer rảnh rỗi không được assign vào Partition nào cả.
+  - Consumer 1: 
+    ```shell
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[main-consumer-topic-2])
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-2
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-2 to the committed offset FetchPosition{offset=2, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-2]
+    ```
+    
+  - Consumer 2: 
+    ```shell
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[main-consumer-topic-1])
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-1
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-1 to the committed offset FetchPosition{offset=6, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-1]
+    ```
+    
+  - Consumer 3: 
+    ```shell
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[main-consumer-topic-0])
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: main-consumer-topic-0
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Setting offset for partition main-consumer-topic-0 to the committed offset FetchPosition{offset=4, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 0 rack: null)], epoch=0}}
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: [main-consumer-topic-0]
+    ```
+    
+  - Consumer 4:
+    ```shell
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Request joining group due to: group is already rebalancing
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Revoke previously assigned partitions 
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions revoked: []
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully joined group with generation Generation{generationId=7, memberId='consumer-consumerGroupII-1-7d923c2f-e4a7-4f0f-8570-9ce1a8a68795', protocol='range'}
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully synced group in generation Generation{generationId=7, memberId='consumer-consumerGroupII-1-7d923c2f-e4a7-4f0f-8570-9ce1a8a68795', protocol='range'}
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[])
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: 
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: []
+    ```
+
+  - Consumer 5: 
+    ```shell
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Discovered group coordinator 127.0.0.1:9092 (id: 2147483647 rack: null)
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Request joining group due to: need to re-join with the given member-id
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] (Re-)joining group
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully joined group with generation Generation{generationId=7, memberId='consumer-consumerGroupII-1-bd63dc44-748c-40c6-8562-0f037abda707', protocol='range'}
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Successfully synced group in generation Generation{generationId=7, memberId='consumer-consumerGroupII-1-bd63dc44-748c-40c6-8562-0f037abda707', protocol='range'}
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Notifying assignor about the new Assignment(partitions=[])
+    [Kafka-Consumer] INFO  - [Consumer clientId=consumer-consumerGroupII-1, groupId=consumerGroupII] Adding newly assigned partitions: 
+    [Kafka-Consumer] INFO  - consumerGroupII: partitions assigned: []
+    ```
