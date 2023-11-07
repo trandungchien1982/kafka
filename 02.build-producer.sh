@@ -3,7 +3,7 @@ echo 'Start build Spring Boot for Producer ...'
 
 cd ./spring-kafka-producer
 chmod +x ./gradlew
-./gradlew build
+./gradlew clean build
 
 cd ..
 

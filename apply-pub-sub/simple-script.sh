@@ -1,3 +1,3 @@
 
-echo 'Use Consumer Group in Kafka !'
+echo 'Apply Pub/Sub in Kafka !'
 echo 'Welcome to Kafka Wonderland ...'
