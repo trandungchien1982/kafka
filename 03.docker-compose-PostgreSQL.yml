@@ -1,0 +1,24 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+
+services:
+
+  postgres-for-kafka-connect:
+    image: postgres:9.5.25-alpine
+    restart: always
+    ports:
+      - 54333:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    networks:
+      - common-network
+
+networks:
+  common-network:
+    external: true
+
+#The PostgreSQL database
+#Server : localhost
+#User/Pass : root/root
+#Database : root
